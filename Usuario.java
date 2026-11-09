@@ -1,41 +1,46 @@
-//Usuario.java
+// Usuario.java
+// Clase encargada de almacenar la información del usuario del sistema
 
-public class Usuario{
-	//atributos
+public class Usuario {
+	// Atributos privados
 	private String nombre;
 	private String usuario;
 	
-	//constructor vacio
-	public Usuario(){
+	// Constructor vacío
+	public Usuario() {
 		this.nombre = "";
 		this.usuario = "";
 	}
 	
-	//metodos gets/set
+	// Constructor con parámetros (ESTE ES EL QUE FALTABA Y CAUSABA EL ERROR)
+	public Usuario(String nombre, String usuario) {
+		this.nombre = nombre;
+		this.usuario = usuario;
+	}
 	
-	public String getNombre(){
+	// Métodos Gets y Sets corregidos
+	public String getNombre() {
 		return nombre;
 	}
 	
-	public String setNombre(String nombre){
-		return nombre;
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
 	}
 	
-	public String getUsuario(String usuario){
+	public String getUsuario() {
 		return usuario;
 	}
 	
-	public String setUsuario(){
-		return usuario;
+	public void setUsuario(String usuario) {
+		this.usuario = usuario;
 	}
 	
-	//metodos
-	
-	public void consultarReceta(){
+	// Métodos informativos
+	public void consultarReceta() {
 		System.out.println("El usuario " + usuario + " quiere consultar una receta.");
 	}
 	
-	public void agregarReceta(){
+	public void agregarReceta() {
 		System.out.println("El usuario " + usuario + " quiere agregar una receta.");
 	}
 }

@@ -1,9 +1,13 @@
-// Clase abstracta base que representa la estructura general de cualquier receta
-public abstract class Receta {
-    // Constante para definir el tamaño máximo del arreglo de ingredientes[cite: 1, 4]
+//Receta.java
+import javax.swing.JOptionPane;
+import java.io.Serializable;
+
+// Clase abstracta base de cualquier receta. Implementa Preparable (como Contenido implementa Reproducir)
+// y Serializable para poder guardarla en archivo
+public abstract class Receta implements Preparable, Serializable {
+    // tamaño maximo del arreglo de ingredientes
     private final int CANTIDAD = 10;
-    
-    // Atributos privados de la receta según el diagrama UML
+
     private String nombre;
     private int tiempoPreparacion;
     private String dificultad;
@@ -11,13 +15,14 @@ public abstract class Receta {
     private String instrucciones;
     private String resena;
     private float calificacion;
-    
-    // Arreglo de tamaño fijo para almacenar los ingredientes sin usar memoria dinámica[cite: 1, 4]
+
+    // arreglo de tamaño fijo, todo manual (sin memoria dinamica)
     private Ingrediente ingredientes[];
-    // Contador para saber cuántos ingredientes se han guardado actualmente
     private int totalIngredientes;
 
-    // Constructor vacio
+    // volatile: lo cambia detener() y lo lee el hilo de preparar()
+    private volatile boolean preparando;
+
     public Receta() {
         this.nombre = "";
         this.tiempoPreparacion = 0;
@@ -25,12 +30,12 @@ public abstract class Receta {
         this.porciones = 0;
         this.instrucciones = "";
         this.resena = "";
-        this.calificacion = 0.0f; 
-        this.ingredientes = new Ingrediente[CANTIDAD]; 
+        this.calificacion = 0.0f;
+        this.ingredientes = new Ingrediente[CANTIDAD];
         this.totalIngredientes = 0;
+        this.preparando = false;
     }
 
-    // Constructor para inicializar los atributos de receta
     public Receta(String nombre, int tiempoPreparacion, String dificultad, int porciones, String instrucciones, String resena, float calificacion) {
         this.nombre = nombre;
         this.tiempoPreparacion = tiempoPreparacion;
@@ -41,51 +46,92 @@ public abstract class Receta {
         this.calificacion = calificacion;
         this.ingredientes = new Ingrediente[CANTIDAD];
         this.totalIngredientes = 0;
+        this.preparando = false;
     }
 
-    // Método abstracto que deberán implementar las clases hijas (Postre, Platillo, Bebida)[cite: 1]
+    // metodo abstracto: cada hija (Postre, Platillo, Bebida) lo implementa a su manera
     public abstract String mostrarReceta();
 
-    // Agrega un ingrediente al final del arreglo si aún hay espacio[cite: 1]
-    public boolean agregarIngrediente(Ingrediente i) {
-        // Verifica si se alcanzó el límite máximo de ingredientes[cite: 1]
-        if (totalIngredientes >= CANTIDAD) {
-            return false; // Arreglo lleno
+    // regresa los ingredientes en un String (usa el toString de Ingrediente)
+    public String getListaIngredientes() {
+        String lista = "";
+        for (int i = 0; i < totalIngredientes; i++) {
+            lista = lista + "- " + ingredientes[i] + "\n";
         }
-        ingredientes[totalIngredientes++] = i; // Guarda el ingrediente e incrementa el contador
-        return true; // Agregado con éxito
+        return lista;
     }
 
-    // Elimina un ingrediente por su nombre y recorre los demás a la izquierda[cite: 1]
+    // agrega un ingrediente al final del arreglo, regresa false si esta lleno
+    public boolean agregarIngrediente(Ingrediente i) {
+        if (totalIngredientes >= CANTIDAD) {
+            return false;
+        }
+        ingredientes[totalIngredientes++] = i;
+        return true;
+    }
+
+    // elimina un ingrediente por nombre y recorre los demas a la izquierda
     public boolean eliminarIngrediente(String nombre) {
         for (int i = 0; i < totalIngredientes; i++) {
-            // Uso de compareTo en lugar de .equals() según las restricciones[cite: 4]
             if (ingredientes[i].getNombre().compareTo(nombre) == 0) {
-                // Desplaza los elementos para no dejar huecos vacíos
                 for (int j = i; j < totalIngredientes - 1; j++) {
                     ingredientes[j] = ingredientes[j + 1];
                 }
-                ingredientes[totalIngredientes - 1] = null; // Limpia la última posición
-                totalIngredientes--; 
-                return true; 
+                ingredientes[totalIngredientes - 1] = null;
+                totalIngredientes--;
+                return true;
             }
         }
-        return false; //no se encontro ingrediente
+        return false;
     }
 
-    // Muestra en consola la lista de ingredientes registrados[cite: 1]
     public void mostrarIngredientes() {
         for (int i = 0; i < totalIngredientes; i++) {
             ingredientes[i].mostrarIngrediente();
         }
     }
 
-    //muestra en consola la reseña y calificación
     public void mostrarResena() {
         System.out.println("Reseña: " + resena + " | Calificación: " + calificacion);
     }
 
-    // Métodos Getters y Setters para acceder y modificar atributos privados[cite: 1]
+    @Override
+    public String toString() {
+        return nombre + ", " + tiempoPreparacion + " min, Dificultad: " + dificultad + ", Porciones: " + porciones;
+    }
+
+    // metodos de la interface Preparable
+    @Override
+    public void preparar() {
+        JOptionPane.showMessageDialog(null, "Preparando " + nombre + "\n" + instrucciones);
+        preparando = true;
+        //funcion lambda: hilo que va mostrando en consola un ingrediente a la vez
+        Runnable pasos = () -> {
+            for (int i = 0; i < totalIngredientes && preparando; i++) {
+                System.out.println("Agregando " + ingredientes[i]);
+                try {
+                    Thread.sleep(3000); //3 segundos
+                } catch (InterruptedException e) {}
+            }
+            preparando = false;
+        };
+        //crea el hilo
+        Thread hilo = new Thread(pasos);
+        hilo.start();
+    }
+
+    @Override
+    public void pausar() {
+        JOptionPane.showMessageDialog(null, "Pausando la receta " + nombre);
+    }
+
+    @Override
+    public void detener() {
+        preparando = false;
+        JOptionPane.showMessageDialog(null, "Deteniendo la receta " + nombre);
+    }
+
+    // Getters y Setters
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
 
@@ -109,4 +155,63 @@ public abstract class Receta {
 
     public Ingrediente[] getIngredientes() { return ingredientes; }
     public int getTotalIngredientes() { return totalIngredientes; }
+
+    // Clase ANIDADA: Ingrediente solo tiene sentido dentro de una Receta, por eso se define dentro de ella.
+    // Es static para poder crear ingredientes sin necesidad de un objeto Receta: new Receta.Ingrediente(...)
+    public static class Ingrediente implements Serializable
+    {
+        private String nombre;
+        private float cantidad;
+        private String unidad;
+
+        public Ingrediente() {
+            this.nombre = "";
+            this.cantidad = 0.0f;
+            this.unidad = "";
+        }
+
+        public Ingrediente(String nombre, float cantidad, String unidad) {
+            this.nombre = nombre;
+            this.cantidad = cantidad;
+            this.unidad = unidad;
+        }
+
+        public String getNombre() {
+            return nombre;
+        }
+
+        public void setNombre(String nombre) {
+            this.nombre = nombre;
+        }
+
+        public float getCantidad() {
+            return cantidad;
+        }
+
+        public void setCantidad(float cantidad) {
+            this.cantidad = cantidad;
+        }
+
+        public String getUnidad() {
+            return unidad;
+        }
+
+        public void setUnidad(String unidad) {
+            this.unidad = unidad;
+        }
+
+        @Override
+        public String toString() {
+            return nombre + ": " + cantidad + " " + unidad;
+        }
+
+        public void mostrarIngrediente() {
+            System.out.println("- " + this);
+        }
+
+        public String modificarCantidad(float cantidad) {
+            this.cantidad = cantidad;
+            return "Cantidad actualizada de " + nombre + " a " + cantidad + " " + unidad;
+        }
+    }
 }
